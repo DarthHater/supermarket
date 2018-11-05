@@ -35,29 +35,11 @@ Supermarket::Config.load_or_create_secrets!(
 )
 
 Supermarket::Config.audit_config(node['supermarket'])
+Supermarket::Config.maybe_turn_on_fips(node)
 
 # Copy things we need from the supermarket namespace to the top level. This is
 # necessary for some community cookbooks.
 node.consume_attributes('runit' => node['supermarket']['runit'])
-
-case node['supermarket']['fips_enabled']
-when nil
-  # the default value, set fips mode based on whether it is enabled in the kernel
-  fips_path = "/proc/sys/crypto/fips_enabled"
-  enabled_in_kernel = (File.exist?(fips_path) && File.read(fips_path).chomp != "0")
-  node.normal['supermarket']['fips_enabled'] = enabled_in_kernel
-  if enabled_in_kernel
-    Chef::Log.info('Detected FIPS-enabled kernel; enabling FIPS 140-2 for Supermarket services.')
-  end
-when false
-  Chef::Log.warn('Overriding FIPS detection: FIPS 140-2 mode is OFF.')
-when true
-  Chef::Log.warn('Overriding FIPS detection: FIPS 140-2 mode is ON.')
-else
-  node.normal['supermarket']['fips_enabled'] = true
-  Chef::Log.warn('fips_enabled is set to something other than boolean true/false; assuming FIPS mode should be enabled.')
-  Chef::Log.warn('Overriding FIPS detection: FIPS 140-2 mode is ON.')
-end
 
 # set chef_oauth2_url from chef_server_url after this value has been loaded from config
 if node['supermarket']['chef_server_url'] && node['supermarket']['chef_oauth2_url'].nil?
